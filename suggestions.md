@@ -10,7 +10,7 @@
 
 | Question | Answer | Why (short) |
 |---|---|---|
-| Open-source LLM instead of Gemini? | **Qwen3-8B** via Ollama, Q4_K_M quant, CPU inference (fallback: Qwen3-4B) | Vellum's leaderboard-topping open models (GLM 5.2, Kimi K2.6, DeepSeek V4-Pro, Kimi K3 — all 700B-1T MoE, even Vellum's own "best for local" pick Gemma 4 31B) aren't runnable on a no-GPU machine at usable speed. Qwen3 keeps native tool-calling at a size that runs at 15-30 tok/s on CPU |
+| Open-source LLM instead of Gemini? | **Qwen3-8B** via Ollama, Q4_K_M quant, CPU inference, always called with `think:false` (tested Qwen3-4B as a fallback — rejected, see below) | Vellum's leaderboard-topping open models (GLM 5.2, Kimi K2.6, DeepSeek V4-Pro, Kimi K3 — all 700B-1T MoE, even Vellum's own "best for local" pick Gemma 4 31B) aren't runnable on a no-GPU machine at usable speed. Qwen3 keeps native tool-calling, confirmed working by direct test. Real measured throughput on this machine is ~2-6 tok/s (not the ~15-30 tok/s generic figure originally assumed) — see the "Validated on actual hardware" note under §2 |
 | Embedding model + dimension? | **Qwen3-Embedding-0.6B**, native dimension | Same SOTA family as the MTEB-topping 8B variant, traded down to a size cheap enough for CPU — embedding is a single forward pass (not autoregressive decoding), so it stays fast even without a GPU |
 | Train YOLO on vehicles/damage? | **Fine-tune** YOLOv8n/v11n on a public damage dataset — don't use stock COCO weights, don't train from zero | COCO has no "dent"/"scratch" classes; a few thousand labeled images already exist publicly, fine-tuning takes hours not days |
 | PostgreSQL vs SQLite? | **SQLite** | Single user, single writer, embedded, zero-config, fully ACID-durable — Postgres buys you nothing here and adds a server to run |
@@ -61,15 +61,32 @@ Folding "Phase 2" into Phase 1 isn't just more work — it changes the *shape* o
 ### LLM: Qwen3-8B (Ollama, local, CPU)
 
 - **Checked the Vellum leaderboard before picking this** (you asked). Vellum's overall top open models are GLM 5.2 (744B total/40B active MoE, 77.8% SWE-Bench), Kimi K2.6 (1T params), DeepSeek V4-Pro (80.6% SWE-Bench), and reasoning-leader Kimi K3 (93.5% GPQA Diamond). Even Vellum's own pick for **best local-deployment model, Gemma 4 31B**, assumes a GPU — at Q4 it needs ~16-20GB RAM and runs only a few tokens/sec on CPU alone. None of Vellum's top picks are usable on a no-GPU machine.
-- **Why Qwen3-8B instead:** it's the largest Qwen3 size that stays comfortably usable on CPU — public benchmarks put 7B-class models at 15-30 tok/s on a modern CPU, which is slow but workable for a non-realtime portfolio demo (a few seconds per answer, not milliseconds). It keeps native tool-calling support, which the agent in §7 depends on.
-- **Fallback:** Qwen3-4B if 8B feels too slow in practice — 3-4B models run 40-70 tok/s on CPU, still tool-calling-capable, just a bit weaker on hard reasoning ("does this damage fall under this exclusion clause"-type questions).
+- **Why Qwen3-8B instead:** it's the largest Qwen3 size that stays comfortably usable on CPU, and it keeps native tool-calling support, which the agent in §7 depends on. The original "15-30 tok/s on a modern CPU" figure below was a generic industry claim, not a measurement on this machine — see the **Validated on actual hardware** subsection for the real numbers, which are considerably slower.
+- **Fallback:** Qwen3-4B, tested (see below) — real speedup exists (~2x) but comes with a quality tradeoff not previously identified.
 - **Serving:** Ollama (`ollama pull qwen3:8b`), exposed at `localhost:11434`, CPU mode (no GPU flags needed). Install natively, no Docker.
 
-### Embeddings: Qwen3-Embedding-0.6B, native dimension (Ollama, local, CPU)
+#### Validated on actual hardware (Day 1, post-scaffolding)
+
+Machine: Intel i7-10610U (4 cores/8 threads, 1.8GHz base — a 15W ultrabook chip), 16GB RAM. Measured directly against Ollama's API, not inferred from public benchmarks:
+
+| Test | Result |
+|---|---|
+| Qwen3-8B, default settings (thinking mode on) | 3,694 output tokens, 2.23 tok/s, **27.5 minutes** for one answer |
+| Qwen3-8B, `think:false`, realistic short-answer prompt | 48 tokens, 3.17 tok/s, **21s** wall-clock — clean, correct answer |
+| Qwen3-8B, tool-calling (`retrieve_policy_sections`) | Works correctly, valid structured tool call returned, but **42s** for the routing decision alone |
+| Qwen3-4B, `think:false`, same prompt | 5.76 tok/s (~2x faster) **but** produced rambling internal-monologue-style prose instead of a clean final answer — `think:false` did not suppress this the way it did for 8B |
+
+**Conclusions that change the plan:**
+1. **Qwen3's "thinking" mode must be explicitly disabled** (`think: false` on every Ollama `/api/generate` and `/api/chat` call) — without it, a single answer takes 27+ minutes instead of ~20s. This wasn't mentioned anywhere in the original plan and is now a hard requirement for `app/services/embeddings.py`/`rag.py`/`agent.py`.
+2. **Real per-turn latency is ~20-90s**, not "a few seconds" — a full agentic turn (tool-call routing → retrieval → final answer synthesis) can run 60-120s+ on this hardware. `PLAN.md`'s Day 4 "done" criterion has been corrected to match (see there).
+3. **Decision: keep Qwen3-8B**, not 4B — 4B's speedup doesn't offset needing to solve its rambling-output problem, and 8B's tool-calling and answer quality are solid. The real latency is treated as an accepted, documented tradeoff for a non-realtime portfolio demo (with a loading/progress UI state), not something to silently hide behind an inaccurate "a few seconds" claim.
+4. **Still not validated** (blocked on Day 3-4's actual RAG pipeline existing): retrieval accuracy and answer groundedness against the real 6 IRDAI policies. Speed is now measured; quality/accuracy is not — that remains the job of Day 3-4's manual tests and the Day 12 (§12) 60-case evaluation.
+
+### Embeddings: Qwen3-Embedding-0.6B, 1024-dim (Ollama, local, CPU)
 
 - **Why Qwen3-Embedding:** the 8B variant tops the MTEB leaderboard at 70.6 — ahead of OpenAI (64.6) and Google's embedding API (68.3). It's served natively through Ollama (2M+ pulls).
 - **Why 0.6B, not 4B/8B:** embedding is a single forward pass per chunk, not autoregressive token-by-token decoding like the LLM — so it's much cheaper on CPU than generation is, but at your data volume (a handful of policies) there's no reason to pay for the largest variant either. The 0.6B model stays in the same SOTA-leaderboard family/training lineage, just sized for CPU throughput during PDF ingestion.
-- **Dimension:** use the 0.6B model's native output dimension directly — it's smaller than the 4B/8B variants' 4096-dim output, so the earlier Matryoshka-truncate-to-1024 advice (sized for the bigger models) isn't needed here.
+- **Dimension:** **1024**, confirmed empirically via Ollama's `/api/embed` endpoint on Day 1 (previously left as "native dimension" with no actual number stated). This is the value to use for the Qdrant collection's vector size in Day 3 — it's smaller than the 4B/8B variants' 4096-dim output, so the earlier Matryoshka-truncate-to-1024 advice (sized for the bigger models) isn't needed here.
 
 ```
 Education Point:
@@ -362,8 +379,10 @@ Roughly 10 working sessions (~5 hrs each, ~50 hrs total — scales to 2 full wee
 WEEK 1 — Foundation + Core RAG
 Day 1  Setup: FastAPI, Next.js, Qdrant (embedded local mode), Ollama (Qwen3-8B + Qwen3-Embedding-0.6B,
        CPU mode), SQLite schema, GitHub repo. Pull the 3 IRDAI policy wordings (§4).
-       Note: local inference runs a few seconds per response on CPU, not milliseconds —
-       fine for a solo demo, just budget for it when testing interactively.
+       Note: local inference measured at ~20-90s per response on this hardware (i7-10610U,
+       no GPU) with Qwen3's thinking mode disabled — not milliseconds, and slower than
+       originally assumed. Fine for a solo demo with a loading-state UI; see the
+       "Validated on actual hardware" note under §2's LLM section for the real numbers.
 Day 2  Email+password auth (register/login forms, bcrypt hashing, JWT session).
        PDF upload + parsing + chunking pipeline.
 Day 3  Embedding pipeline (Qwen3-Embedding-0.6B, native dim) → Qdrant. Retrieval endpoint.

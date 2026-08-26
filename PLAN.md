@@ -83,11 +83,11 @@ Nothing here should block Day 1 — it's all downloads/account setup.
 #### Day 4 — RAG Answers + Chat UI
 
 - [ ] Prompt template: question + retrieved chunks → grounded answer with citation back to section/page
-- [ ] `/ask` endpoint: retrieve → call Qwen3-8B via Ollama → return answer + citations
-- [ ] Chat UI in Next.js: policy selector, message thread, citation display (click to see source chunk)
-- [ ] Cache identical (policy_id, question) pairs in SQLite — cheap latency win given CPU inference speed (`suggestions.md` §2)
+- [ ] `/ask` endpoint: retrieve → call Qwen3-8B via Ollama (**must pass `think: false`** — see `suggestions.md`'s "Validated on actual hardware" note, without it a single answer takes 27+ minutes) → return answer + citations
+- [ ] Chat UI in Next.js: policy selector, message thread, citation display (click to see source chunk), **and a visible "thinking..." / progress state** — real answers take ~20-90s on this hardware, not milliseconds
+- [ ] Cache identical (policy_id, question) pairs in SQLite — a meaningful latency win, not just a nice-to-have, given measured CPU inference speed (`suggestions.md` §2)
 
-**Done when:** you can ask a real question about one of the 3 IRDAI policies in the UI and get a cited, grounded answer within a few seconds.
+**Done when:** you can ask a real question about one of the 3 IRDAI policies in the UI and get a cited, grounded answer, with the UI showing a loading state for the ~20-90s it actually takes (corrected from an earlier "a few seconds" assumption that Day 1 benchmarking showed was wrong for this hardware — see `suggestions.md` §2).
 
 #### Day 5 — Policy Comparison + Gap Analysis
 
