@@ -1,0 +1,39 @@
+# Python / backend
+backend/.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Env files
+.env
+backend/.env
+frontend/.env.local
+
+# SQLite
+backend/*.db
+backend/*.db-journal
+backend/*.sqlite3
+
+# Qdrant embedded-mode local storage
+backend/qdrant_data/
+
+# Uploaded user files
+backend/uploads/
+backend/storage/
+
+# Node / frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env*.local
+npm-debug.log*
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Large dataset - reproducible via README instructions, not worth versioning
+data/damage_dataset/
