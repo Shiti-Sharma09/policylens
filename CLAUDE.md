@@ -8,6 +8,13 @@ Day 0 (prep) and Day 1 (FastAPI + Next.js + SQLite + embedded Qdrant scaffolding
 
 **Local dev environment note:** this machine has no Docker installed — Qdrant runs in `qdrant-client`'s embedded local mode instead (see Vector DB decision below). Python 3.12 was installed via winget after Day 0's original assumption of "already available" turned out wrong; the backend venv lives at `backend/.venv/` (gitignored).
 
+## Git workflow: feature branches + PRs into `main` — no direct pushes
+
+Repo is public on GitHub at `https://github.com/Shiti-Sharma09/policylens`, `main` is branch-protected (`enforce_admins: true`, PR required, 0 approvals required — so the owner can still merge solo, but GitHub rejects any direct push to `main`, confirmed by test). This means:
+- **Never commit/push directly to `main`.** Create a feature branch per day/task (e.g. `day2-auth-ingestion`), commit there, push it, then open a PR with `gh pr create` and merge with `gh pr merge` (or via the GitHub UI) once it's tested locally.
+- `git push origin main` will always fail with `GH006: Protected branch update failed` — that's expected, not a bug to fix.
+- Git's credential helper is configured globally via `gh auth setup-git` (`credential.helper = !gh auth git-credential`) — `git push`/`git pull` over HTTPS should just work without further auth setup.
+
 The planning docs, in reading order:
 - **`suggestions.md`** — the **what/why**: every technology decision (LLM, embeddings, DB, vision model, auth) with reasoning. Read this first to understand *why* a choice was made before changing it.
 - **`PLAN.md`** — the **how/when**: day-by-day execution plan (Day 0–10) with concrete setup steps and "done" criteria for each day. This is the primary task list to work from.
