@@ -16,9 +16,6 @@ backend/*.db
 backend/*.db-journal
 backend/*.sqlite3
 
-# Qdrant embedded-mode local storage
-backend/qdrant_data/
-
 # Uploaded user files
 backend/uploads/
 backend/storage/

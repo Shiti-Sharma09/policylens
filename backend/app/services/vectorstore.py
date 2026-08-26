@@ -7,13 +7,12 @@ _client: QdrantClient | None = None
 
 def get_qdrant_client() -> QdrantClient:
     """
-    Embedded local-mode Qdrant client (in-process, on-disk storage,
-    no Docker/server). Deviation from suggestions.md/PLAN.md's original
-    "Docker Compose" choice - see CLAUDE.md for rationale.
-    Note: on-disk storage is exclusive-locked to one process at a time;
-    don't run two backend instances against the same QDRANT_LOCAL_PATH.
+    Connects to the Qdrant instance started via `docker compose up -d`
+    (see docker-compose.yml). Must be running before the backend starts -
+    the FastAPI lifespan calls this on startup and will fail to connect
+    otherwise.
     """
     global _client
     if _client is None:
-        _client = QdrantClient(path=settings.QDRANT_LOCAL_PATH)
+        _client = QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
     return _client
