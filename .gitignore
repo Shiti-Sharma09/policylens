@@ -37,3 +37,14 @@ Thumbs.db
 
 # Large dataset - reproducible via README instructions, not worth versioning
 data/damage_dataset/
+
+# Internal planning docs and AI-assistant tooling - kept locally, not published to GitHub
+CLAUDE.md
+PLAN.md
+PROGRESS.md
+suggestions.md
+questions_for_shiti.txt
+requirements.txt
+skills-lock.json
+.agents/
+.claude/
