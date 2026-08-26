@@ -54,8 +54,8 @@ FastAPI backend
 ```
 
 **Key technology decisions** (each argued for in `suggestions.md` §0/§2 — read there before overriding):
-- **LLM:** Qwen3-8B via Ollama, CPU inference, `localhost:11434` (fallback Qwen3-4B if too slow). Chosen for native tool-calling support at a CPU-runnable size — not a cloud API.
-- **Embeddings:** Qwen3-Embedding-0.6B via Ollama, native dimension (no Matryoshka truncation needed at this size).
+- **LLM:** Qwen3-8B via Ollama, CPU inference, `localhost:11434`. Chosen for native tool-calling support (confirmed working by direct test) at a CPU-runnable size — not a cloud API. **Always call with `think: false`** — Qwen3's default thinking mode was measured taking 27+ minutes for one answer versus ~20s with it disabled; this is a hard requirement for any code in `app/services/rag.py`/`embeddings.py`/`agent.py`, not optional. Real measured throughput on this machine is ~2-6 tok/s (not the ~15-30 tok/s generic figure `suggestions.md` originally assumed before Day 1 hardware validation) — expect ~20-90s per RAG/agent turn, and build a loading/progress UI state around that, not a "few seconds" assumption.
+- **Embeddings:** Qwen3-Embedding-0.6B via Ollama, **1024-dim** (confirmed empirically via `/api/embed`, not just assumed) — use this exact number for the Qdrant collection's vector size in Day 3.
 - **Vector DB:** Qdrant, running in `qdrant-client`'s **embedded local mode** (in-process, on-disk at `backend/qdrant_data/`, gitignored) — revised from the original "Docker Compose" plan during Day 1 execution because Docker isn't installed on this machine. Same Qdrant API either way; see `suggestions.md`'s Vector DB section for the tradeoff (single-process file lock — don't run two backend instances against the same path at once).
 - **App DB:** SQLite, not Postgres — single user, single writer, zero-config, one-file portability.
 - **Vision:** YOLOv8n/v11n, fine-tuned (not stock COCO weights — COCO has no dent/scratch/windshield-crack classes) on a public Roboflow car-damage dataset via free Kaggle GPU hours; inference runs locally on CPU.
