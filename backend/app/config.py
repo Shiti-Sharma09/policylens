@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     OLLAMA_EMBEDDING_MODEL: str = "qwen3-embedding:0.6b"
     EMBEDDING_DIMENSION: int = 1024  # measured via /api/embed on Day 1 - see suggestions.md
     OLLAMA_THINK: bool = False  # Qwen3 thinking mode: 27+ min/answer if left on, ~20s if off
-    QDRANT_LOCAL_PATH: str = "./qdrant_data"
+    QDRANT_HOST: str = "localhost"
+    QDRANT_PORT: int = 6333
     DATABASE_URL: str = "sqlite:///./policylens.db"
 
     class Config:

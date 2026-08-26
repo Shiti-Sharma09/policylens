@@ -30,7 +30,7 @@ PolicyLens runs entirely on your own machine — no data leaves your computer, a
 
 ## Getting started
 
-**Requirements:** Python 3.12+, Node.js 18+, and [Ollama](https://ollama.com) installed locally.
+**Requirements:** Python 3.12+, Node.js 18+, [Docker](https://www.docker.com/products/docker-desktop/), and [Ollama](https://ollama.com) installed locally.
 
 ### 1. Pull the required local models
 ```bash
@@ -38,7 +38,12 @@ ollama pull qwen3:8b
 ollama pull qwen3-embedding:0.6b
 ```
 
-### 2. Run the backend
+### 2. Start the search database
+```bash
+docker compose up -d
+```
+
+### 3. Run the backend
 ```bash
 cd backend
 python -m venv .venv
@@ -49,7 +54,7 @@ uvicorn app.main:app --reload --port 8000
 ```
 Visit `http://localhost:8000/health` — you should see `{"status": "ok"}`.
 
-### 3. Run the frontend
+### 4. Run the frontend
 ```bash
 cd frontend
 npm install
