@@ -59,13 +59,13 @@ Use this file to track progress day by day. Update the **Status** column as you 
 
 | Action Item | Desired Outcome | Status |
 |---|---|---|
-| Initialize Git repo and GitHub | Code is version-controlled and backed up online | Pending |
-| Set up FastAPI backend skeleton | Empty backend project ready to build on | Pending |
-| Set up Next.js frontend skeleton | Empty frontend project ready to build on | Pending |
-| Run Qdrant via Docker Compose | Search database running locally | Pending |
-| Create SQLite database schema | Storage ready for users, policies, claims | Pending |
-| Add environment variable template file | Settings/secrets kept separate from code | Pending |
-| Verify backend-frontend health check works | Confirms frontend and backend can talk | Pending |
+| Initialize Git repo (local) | Code is version-controlled | Done (GitHub remote not yet created — optional, no `gh` CLI on this machine) |
+| Set up FastAPI backend skeleton | Empty backend project ready to build on | Done |
+| Set up Next.js frontend skeleton | Empty frontend project ready to build on | Done |
+| Run Qdrant, embedded local mode | Search database running locally | Done (revised from Docker Compose — Docker isn't installed on this machine; see `suggestions.md`) |
+| Create SQLite database schema | Storage ready for users, policies, claims | Done (`user`, `policy`, `policychunkmeta`, `claim` tables verified) |
+| Add environment variable template file | Settings/secrets kept separate from code | Done |
+| Verify backend-frontend health check works | Confirms frontend and backend can talk | Done |
 
 **What each action item means:**
 

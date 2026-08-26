@@ -2,9 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Status: Pre-Implementation
+## Project Status: Day 1 Complete
 
-**No application code exists yet.** This repository currently contains only planning documents and raw source data — no `backend/`, `frontend/`, or any FastAPI/Next.js scaffolding has been created. Do not assume any code structure exists; check with `ls`/`Glob` before referencing a path. When the user asks to start building, follow `PLAN.md`'s day-by-day order starting at Day 1 (Day 0 prep is already done — see `PROGRESS.md`).
+Day 0 (prep) and Day 1 (FastAPI + Next.js + SQLite + embedded Qdrant scaffolding) are done — see `PROGRESS.md`. `backend/` and `frontend/` exist and run locally (`/health` round trip verified). All routers (`auth`, `upload`, `ask`, `compare`, `damage`, `agent`) and services (`rag`, `embeddings`, `yolo`, `comparison`, `fraud_signals`, `claim_advisor`, `agent`) are stubs only — no real logic yet. Day 2 (auth + PDF ingestion) is next. Check `PROGRESS.md`'s status table before assuming any later day's work exists.
+
+**Local dev environment note:** this machine has no Docker installed — Qdrant runs in `qdrant-client`'s embedded local mode instead (see Vector DB decision below). Python 3.12 was installed via winget after Day 0's original assumption of "already available" turned out wrong; the backend venv lives at `backend/.venv/` (gitignored).
 
 The planning docs, in reading order:
 - **`suggestions.md`** — the **what/why**: every technology decision (LLM, embeddings, DB, vision model, auth) with reasoning. Read this first to understand *why* a choice was made before changing it.
@@ -47,36 +49,48 @@ FastAPI backend
 **Key technology decisions** (each argued for in `suggestions.md` §0/§2 — read there before overriding):
 - **LLM:** Qwen3-8B via Ollama, CPU inference, `localhost:11434` (fallback Qwen3-4B if too slow). Chosen for native tool-calling support at a CPU-runnable size — not a cloud API.
 - **Embeddings:** Qwen3-Embedding-0.6B via Ollama, native dimension (no Matryoshka truncation needed at this size).
-- **Vector DB:** Qdrant, self-hosted via Docker Compose.
+- **Vector DB:** Qdrant, running in `qdrant-client`'s **embedded local mode** (in-process, on-disk at `backend/qdrant_data/`, gitignored) — revised from the original "Docker Compose" plan during Day 1 execution because Docker isn't installed on this machine. Same Qdrant API either way; see `suggestions.md`'s Vector DB section for the tradeoff (single-process file lock — don't run two backend instances against the same path at once).
 - **App DB:** SQLite, not Postgres — single user, single writer, zero-config, one-file portability.
 - **Vision:** YOLOv8n/v11n, fine-tuned (not stock COCO weights — COCO has no dent/scratch/windshield-crack classes) on a public Roboflow car-damage dataset via free Kaggle GPU hours; inference runs locally on CPU.
 - **Auth:** self-rolled email+password (bcrypt + JWT), not Firebase phone-OTP — dropped because Firebase now requires a paid Blaze plan with a card on file for phone auth.
 - **Frontend:** Next.js + Tailwind, run via `next dev` — no deployment target for this build.
 - **Data:** 6 real IRDAI-filed policy wordings (2 insurers × {comprehensive, third-party-only, two-wheeler}) in `data/irdai_policies/` — these double as RAG test data *and* the gap-analysis reference library. Not synthetic, not scraped insurer marketing pages — the actual regulator-filed wordings.
 
-### Proposed repo structure (once scaffolding starts — see `PLAN.md`'s "Repo Structure")
+### Repo structure (current, as of Day 1)
 
 ```
 backend/
+  .venv/                     (Python 3.12 venv, gitignored)
   app/
-    main.py
-    routers/    (auth, upload, ask, compare, damage, agent)
-    services/   (rag.py, embeddings.py, yolo.py, comparison.py, fraud_signals.py, claim_advisor.py, agent.py)
-    models/     (SQLModel schemas)
-    db.py
-  models/yolo_damage.pt
+    main.py                  (FastAPI app, CORS, lifespan init_db + get_qdrant_client)
+    config.py                (pydantic-settings, loads .env)
+    db.py                    (SQLite engine + init_db/get_session)
+    routers/                 (auth, upload, ask, compare, damage, agent — /ping stubs only)
+    services/                (rag.py, embeddings.py, yolo.py, comparison.py, fraud_signals.py,
+                               claim_advisor.py, agent.py — empty modules, no logic yet)
+    models/models.py         (SQLModel: User, Policy, PolicyChunkMeta, Claim)
+  qdrant_data/               (embedded Qdrant on-disk storage, gitignored)
+  policylens.db              (SQLite, gitignored)
   requirements.txt
-frontend/                    (Next.js + Tailwind)
+  .env / .env.example
+frontend/                    (Next.js 16 + TypeScript + Tailwind, App Router, src/ dir)
+  src/app/page.tsx           (health-check round trip to backend)
+  .env.local                 (NEXT_PUBLIC_API_URL, gitignored)
 data/
-  irdai_policies/            (6 source PDFs — reference library; present now)
-  damage_dataset/            (Roboflow set, gitignored if large; present now as a zip)
-docker-compose.yml           (Qdrant only)
+  irdai_policies/            (6 source PDFs — reference library; committed)
+  damage_dataset/            (Roboflow zip; gitignored, too large to version)
 ```
+
+Not yet created: `models/yolo_damage.pt` (Day 6), `README.md`/`ARCHITECTURE.md`/`EVALUATION_RESULTS.md` (Day 10).
 
 ## Data already present
 
 - `data/irdai_policies/` — 6 PDFs: HDFC ERGO (comprehensive, TP-only, two-wheeler) and ICICI Lombard (same 3 types).
 - `data/damage_dataset/car_damage_dataset_yolov8.zip` — ~1.3GB Roboflow-format car-damage dataset for the Day 6 YOLO fine-tune.
+
+## Frontend: Next.js 16, not the Next.js in training data
+
+`frontend/` was scaffolded with **Next.js 16.3.3 / React 19.2.8** — newer than most training data. `frontend/AGENTS.md` (auto-generated by `next dev`, re-added if deleted) flags this explicitly and points to `frontend/node_modules/next/dist/docs/` for current API/convention docs. Check those docs before assuming a Next.js API/pattern from memory, especially for anything beyond basic Server/Client Components (which were verified unchanged as of Day 1: `"use client"` + `useEffect` for client-side fetching, `NEXT_PUBLIC_` env var bundling — both work as expected).
 
 ## Working conventions for this project
 

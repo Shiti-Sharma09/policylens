@@ -82,9 +82,11 @@ embedding model on CPU-only hardware even when you have to shrink the LLM
 a lot more aggressively for the same hardware.
 ```
 
-### Vector DB: Qdrant (self-hosted, unchanged from v1)
+### Vector DB: Qdrant, embedded local mode (revised from v1's Docker Compose plan)
 
-Still the right call — free, handles the embedding volume you need, easy local Docker setup.
+- **What changed:** v1 planned Qdrant self-hosted via Docker Compose. At Day 1 execution time, Docker wasn't installed on the build machine, and installing Docker Desktop would have required enabling WSL2/virtualization plus a likely reboot — friction with no payoff for a single-user local app.
+- **What we use instead:** `qdrant-client`'s embedded local mode — the same Qdrant API, running fully in-process against an on-disk folder (`backend/qdrant_data/`, gitignored), no server or container at all.
+- **Tradeoff:** the on-disk store is exclusive-locked to one process at a time — don't run two backend instances against the same path simultaneously. Otherwise functionally equivalent to the Docker-hosted version for this project's needs.
 
 ### Database: SQLite (replacing PostgreSQL)
 
@@ -130,7 +132,7 @@ this is worth saying explicitly in your README/interview talking points.
 ```
 Backend:    FastAPI, run via `uvicorn` locally
 LLM+Embed:  Ollama, native install (not Docker — GPU passthrough is simpler)
-Vector DB:  Qdrant via Docker Compose
+Vector DB:  Qdrant, embedded local mode via qdrant-client (no Docker/server)
 DB:         SQLite file, gitignored, sits alongside the backend
 Frontend:   Next.js dev server (`npm run dev`)
 Files:      Local disk, encrypted at rest
@@ -358,7 +360,7 @@ Roughly 10 working sessions (~5 hrs each, ~50 hrs total — scales to 2 full wee
 
 ```
 WEEK 1 — Foundation + Core RAG
-Day 1  Setup: FastAPI, Next.js, Qdrant (Docker), Ollama (Qwen3-8B + Qwen3-Embedding-0.6B,
+Day 1  Setup: FastAPI, Next.js, Qdrant (embedded local mode), Ollama (Qwen3-8B + Qwen3-Embedding-0.6B,
        CPU mode), SQLite schema, GitHub repo. Pull the 3 IRDAI policy wordings (§4).
        Note: local inference runs a few seconds per response on CPU, not milliseconds —
        fine for a solo demo, just budget for it when testing interactively.

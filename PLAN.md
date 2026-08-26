@@ -52,12 +52,12 @@ Nothing here should block Day 1 — it's all downloads/account setup.
 - [ ] `git init`, create GitHub repo (public or private), first commit
 - [ ] Backend: `fastapi`, `uvicorn`, project skeleton (`app/main.py`, `app/routers/`, `app/models/`, `app/services/`)
 - [ ] Frontend: `npx create-next-app` with Tailwind, basic page skeleton
-- [ ] Qdrant via `docker-compose.yml` (single service, local volume for persistence)
+- [x] Qdrant via `qdrant-client` embedded local mode (on-disk at `backend/qdrant_data/`, gitignored) — revised from the original Docker Compose plan; Docker isn't installed on the build machine, see `suggestions.md` §2
 - [ ] SQLite schema (via SQLModel/SQLAlchemy): `users`, `policies`, `policy_chunks_meta`, `claims` tables — gitignore the `.db` file
 - [ ] `.env.example` documenting required vars (JWT secret key, Ollama host, Qdrant host)
 - [ ] Sanity check: backend `/health` endpoint, frontend hits it and renders "OK"
 
-**Done when:** `uvicorn` and `next dev` both run locally, Qdrant container is up, SQLite tables exist, and a trivial frontend→backend round trip works.
+**Done when:** `uvicorn` and `next dev` both run locally, embedded Qdrant initializes, SQLite tables exist, and a trivial frontend→backend round trip works.
 
 #### Day 2 — Auth + Ingestion
 
@@ -175,7 +175,6 @@ policylens/
 ├── data/
 │   ├── irdai_policies/     (6 source PDFs — reference library)
 │   └── damage_dataset/     (Roboflow set, gitignored if large)
-├── docker-compose.yml      (Qdrant only)
 ├── README.md
 ├── ARCHITECTURE.md
 ├── EVALUATION_RESULTS.md
