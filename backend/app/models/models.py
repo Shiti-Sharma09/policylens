@@ -18,7 +18,8 @@ class Policy(SQLModel, table=True):
     structural_type: Optional[str] = None  # "comprehensive" | "third_party_only" | "two_wheeler"
     insurer: Optional[str] = None
     uploaded_at: datetime = Field(default_factory=datetime.utcnow)
-    is_reference_doc: bool = Field(default=False)  # True for the 6 IRDAI seed docs (Day 2)
+    is_reference_doc: bool = Field(default=False)  # True for the IRDAI seed docs (Day 2)
+    indexed_at: Optional[datetime] = None  # set once chunks are embedded + upserted into Qdrant (Day 3)
 
 
 class PolicyChunkMeta(SQLModel, table=True):

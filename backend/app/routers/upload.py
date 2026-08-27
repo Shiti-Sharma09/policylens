@@ -1,17 +1,22 @@
+import logging
 import uuid
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from app.config import settings
-from app.db import get_session
+from app.db import engine, get_session
 from app.dependencies import get_current_user
 from app.models.models import Policy, PolicyChunkMeta, User
 from app.services.chunk_store import save_chunks
 from app.services.chunking import chunk_text
 from app.services.file_storage import save_encrypted_pdf
+from app.services.indexing import index_policy
 from app.services.pdf_extraction import extract_text_from_pdf_bytes
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
@@ -23,6 +28,22 @@ class PolicyResponse(BaseModel):
     insurer: str | None
     is_reference_doc: bool
     chunk_count: int
+    indexed: bool
+
+
+def _index_policy_background(policy_id: int, insurer: str | None, structural_type: str | None) -> None:
+    """Runs in the background after the upload response is sent - embedding takes
+    minutes for a full policy (see embeddings.py), far too slow for a request handler."""
+    try:
+        index_policy(policy_id, insurer, structural_type)
+        with Session(engine) as session:
+            policy = session.get(Policy, policy_id)
+            if policy:
+                policy.indexed_at = datetime.now(timezone.utc)
+                session.add(policy)
+                session.commit()
+    except Exception:
+        logger.exception(f"Failed to index policy {policy_id}")
 
 
 @router.get("/ping")
@@ -32,6 +53,7 @@ def ping():
 
 @router.post("/policy", response_model=PolicyResponse, status_code=status.HTTP_201_CREATED)
 async def upload_policy(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     structural_type: str | None = Form(None),
     insurer: str | None = Form(None),
@@ -94,6 +116,8 @@ async def upload_policy(
 
     save_chunks(policy.id, staged_chunks)
 
+    background_tasks.add_task(_index_policy_background, policy.id, policy.insurer, policy.structural_type)
+
     return PolicyResponse(
         id=policy.id,
         filename=policy.filename,
@@ -101,6 +125,7 @@ async def upload_policy(
         insurer=policy.insurer,
         is_reference_doc=policy.is_reference_doc,
         chunk_count=len(chunks),
+        indexed=False,
     )
 
 
@@ -109,7 +134,9 @@ def list_policies(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    policies = session.exec(select(Policy).where(Policy.user_id == current_user.id)).all()
+    policies = session.exec(
+        select(Policy).where((Policy.user_id == current_user.id) | (Policy.is_reference_doc == True))  # noqa: E712
+    ).all()
     result = []
     for policy in policies:
         chunk_count = len(
@@ -123,6 +150,7 @@ def list_policies(
                 insurer=policy.insurer,
                 is_reference_doc=policy.is_reference_doc,
                 chunk_count=chunk_count,
+                indexed=policy.indexed_at is not None,
             )
         )
     return result
