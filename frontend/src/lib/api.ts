@@ -1,0 +1,81 @@
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const TOKEN_KEY = "policylens_token";
+
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearToken(): void {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+async function parseErrorDetail(res: Response): Promise<string> {
+  try {
+    const body = await res.json();
+    if (typeof body.detail === "string") return body.detail;
+    if (Array.isArray(body.detail)) {
+      return body.detail.map((d: { msg?: string }) => d.msg).join(", ");
+    }
+  } catch {
+    // response wasn't JSON - fall through to generic message
+  }
+  return `Request failed (${res.status})`;
+}
+
+export async function register(email: string, password: string): Promise<{ id: number; email: string }> {
+  const res = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) throw new Error(await parseErrorDetail(res));
+  return res.json();
+}
+
+export async function login(email: string, password: string): Promise<string> {
+  const res = await fetch(`${API_URL}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) throw new Error(await parseErrorDetail(res));
+  const data = await res.json();
+  return data.access_token as string;
+}
+
+export interface PolicySummary {
+  id: number;
+  filename: string;
+  structural_type: string | null;
+  insurer: string | null;
+  is_reference_doc: boolean;
+  chunk_count: number;
+}
+
+export async function listPolicies(): Promise<PolicySummary[]> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/upload/policies`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(await parseErrorDetail(res));
+  return res.json();
+}
+
+export async function uploadPolicy(file: File): Promise<PolicySummary> {
+  const token = getToken();
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch(`${API_URL}/upload/policy`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  if (!res.ok) throw new Error(await parseErrorDetail(res));
+  return res.json();
+}
