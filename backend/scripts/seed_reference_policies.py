@@ -1,17 +1,25 @@
 """
 Seeds the 8 IRDAI-filed policy wordings (data/irdai_policies/) through the same
-upload -> extract -> chunk pipeline as a real user upload, tagged is_reference_doc=True.
-These double as RAG test data (Day 3/4) and the gap-analysis reference library (Day 5).
+upload -> extract -> chunk -> embed -> upsert pipeline as a real user upload, tagged
+is_reference_doc=True. These double as RAG test data (Day 3/4) and the gap-analysis
+reference library (Day 5).
 
 Run from backend/, with the venv active and the .venv on PATH:
     python -m scripts.seed_reference_policies
 
-Idempotent: re-running skips any filename already seeded.
+Idempotent: re-running skips any filename already seeded (by filename, not by whether
+it's indexed - if you already have these 8 policies from before Day 3, use
+scripts/backfill_embeddings.py to index them instead of re-running this).
+
+Slow: embedding is ~3s/chunk on this machine's CPU (see embeddings.py), so seeding
+all 8 from scratch takes ~25-30 minutes total. That's expected, not a bug.
 """
 
 import secrets
 import sys
+import time
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlmodel import Session, select
@@ -22,6 +30,7 @@ from app.security import hash_password
 from app.services.chunk_store import save_chunks
 from app.services.chunking import chunk_text
 from app.services.file_storage import save_encrypted_pdf
+from app.services.indexing import index_policy
 from app.services.pdf_extraction import extract_text_from_pdf_bytes
 
 REFERENCE_USER_EMAIL = "reference@policylens.local"
@@ -118,7 +127,13 @@ def seed():
             session.commit()
             save_chunks(policy.id, staged_chunks)
 
-            print(f"OK    {filename} -> policy id={policy.id}, {len(chunks)} chunks")
+            print(f"OK    {filename} -> policy id={policy.id}, {len(chunks)} chunks - embedding now (~3s/chunk)...")
+            start = time.time()
+            index_policy(policy.id, insurer, structural_type)
+            policy.indexed_at = datetime.now(timezone.utc)
+            session.add(policy)
+            session.commit()
+            print(f"      indexed in {time.time() - start:.0f}s")
 
 
 if __name__ == "__main__":

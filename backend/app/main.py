@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import init_db
-from app.services.vectorstore import get_qdrant_client
+from app.services.vectorstore import ensure_collection, get_qdrant_client
 from app.routers import auth, upload, ask, compare, damage, agent
 
 
@@ -12,6 +12,7 @@ from app.routers import auth, upload, ask, compare, damage, agent
 async def lifespan(app: FastAPI):
     init_db()
     get_qdrant_client()
+    ensure_collection()
     yield
 
 
