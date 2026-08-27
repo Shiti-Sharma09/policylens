@@ -1,5 +1,5 @@
 """
-Seeds the 6 IRDAI-filed policy wordings (data/irdai_policies/) through the same
+Seeds the 8 IRDAI-filed policy wordings (data/irdai_policies/) through the same
 upload -> extract -> chunk pipeline as a real user upload, tagged is_reference_doc=True.
 These double as RAG test data (Day 3/4) and the gap-analysis reference library (Day 5).
 
@@ -33,9 +33,11 @@ FILE_MAP = {
     "hdfc_ergo_private_car_comprehensive.pdf": ("HDFC ERGO", "comprehensive"),
     "hdfc_ergo_private_car_tp_only.pdf": ("HDFC ERGO", "third_party_only"),
     "hdfc_ergo_two_wheeler.pdf": ("HDFC ERGO", "two_wheeler"),
+    "hdfc_ergo_two_wheeler_standalone_od.pdf": ("HDFC ERGO", "standalone_own_damage"),
     "icici_lombard_private_car_comprehensive.pdf": ("ICICI Lombard", "comprehensive"),
     "icici_lombard_private_car_tp_only.pdf": ("ICICI Lombard", "third_party_only"),
     "icici_lombard_two_wheeler.pdf": ("ICICI Lombard", "two_wheeler"),
+    "icici_lombard_two_wheeler_standalone_od.pdf": ("ICICI Lombard", "standalone_own_damage"),
 }
 
 
