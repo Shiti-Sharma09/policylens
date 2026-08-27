@@ -74,8 +74,22 @@ async def upload_policy(
     staged_chunks = []
     for i, chunk in enumerate(chunks):
         point_id = str(uuid.uuid4())
-        session.add(PolicyChunkMeta(policy_id=policy.id, qdrant_point_id=point_id, chunk_index=i))
-        staged_chunks.append({"qdrant_point_id": point_id, "chunk_index": i, "text": chunk})
+        session.add(
+            PolicyChunkMeta(
+                policy_id=policy.id,
+                qdrant_point_id=point_id,
+                chunk_index=i,
+                section_hint=chunk["section_hint"],
+            )
+        )
+        staged_chunks.append(
+            {
+                "qdrant_point_id": point_id,
+                "chunk_index": i,
+                "text": chunk["text"],
+                "section_hint": chunk["section_hint"],
+            }
+        )
     session.commit()
 
     save_chunks(policy.id, staged_chunks)
