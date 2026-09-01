@@ -12,6 +12,13 @@ import pdfplumber
 _BOILERPLATE_THRESHOLD = 0.3
 _MIN_PAGES_FOR_BOILERPLATE_DETECTION = 4
 
+# A page number changes every page ("Page 3 of 45" vs "Page 4 of 45"), so it never repeats
+# verbatim often enough to trip the frequency check above - each variant is a different
+# string seen on only one page. A bare page-number line is unambiguous regardless of how
+# often its exact text repeats (real policy wording is never just a number or "Page N of
+# M"), so it's matched and stripped directly instead of needing to pass the threshold.
+_PAGE_NUMBER_LINE = re.compile(r"^(page\s+)?\d{1,4}(\s*(of|/)\s*\d{1,4})?$", re.IGNORECASE)
+
 
 def extract_text_from_pdf_bytes(pdf_bytes: bytes) -> str:
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
@@ -23,7 +30,11 @@ def extract_text_from_pdf_bytes(pdf_bytes: bytes) -> str:
     cleaned_pages = []
     for page_text in page_texts:
         kept_lines = [
-            line for line in page_text.split("\n") if line.strip() and line.strip() not in boilerplate
+            line
+            for line in page_text.split("\n")
+            if line.strip()
+            and line.strip() not in boilerplate
+            and not _PAGE_NUMBER_LINE.match(line.strip())
         ]
         cleaned_pages.append("\n".join(kept_lines))
 

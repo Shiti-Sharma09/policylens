@@ -55,6 +55,7 @@ export interface PolicySummary {
   insurer: string | null;
   is_reference_doc: boolean;
   chunk_count: number;
+  indexed: boolean;
 }
 
 export async function listPolicies(): Promise<PolicySummary[]> {
@@ -75,6 +76,30 @@ export async function uploadPolicy(file: File): Promise<PolicySummary> {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: formData,
+  });
+  if (!res.ok) throw new Error(await parseErrorDetail(res));
+  return res.json();
+}
+
+export interface Citation {
+  chunk_text: string;
+  section_hint: string | null;
+  chunk_index: number;
+  score: number;
+}
+
+export interface AskResponse {
+  answer: string;
+  citations: Citation[];
+  cached: boolean;
+}
+
+export async function askQuestion(policyId: number, question: string): Promise<AskResponse> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ policy_id: policyId, question }),
   });
   if (!res.ok) throw new Error(await parseErrorDetail(res));
   return res.json();
