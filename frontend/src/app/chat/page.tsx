@@ -30,13 +30,38 @@ export default function ChatPage() {
       return;
     }
     setReady(true);
-    listPolicies()
-      .then((all) => {
+
+    let cancelled = false;
+    let poll: ReturnType<typeof setInterval> | null = null;
+
+    async function refreshPolicies() {
+      try {
+        const all = await listPolicies();
+        if (cancelled) return;
         setPolicies(all);
-        const firstIndexed = all.find((p) => p.indexed);
-        if (firstIndexed) setPolicyId(firstIndexed.id);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load policies"));
+        setPolicyId((current) => {
+          if (current && all.some((p) => p.id === current)) return current;
+          return all.find((p) => p.indexed)?.id ?? current;
+        });
+        // Stop polling once nothing is still indexing - no point refreshing further.
+        if (poll && all.every((p) => p.indexed)) {
+          clearInterval(poll);
+          poll = null;
+        }
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load policies");
+      }
+    }
+
+    refreshPolicies();
+    // Some policies may still be indexing in the background - keep the list fresh
+    // instead of requiring a manual page reload to see them become selectable.
+    poll = setInterval(refreshPolicies, 15000);
+
+    return () => {
+      cancelled = true;
+      if (poll) clearInterval(poll);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
