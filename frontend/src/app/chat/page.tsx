@@ -104,13 +104,13 @@ export default function ChatPage() {
       <select
         value={policyId ?? ""}
         onChange={(e) => setPolicyId(Number(e.target.value))}
-        className="rounded border px-3 py-2"
+        className="rounded border bg-black px-3 py-2 text-white"
       >
-        <option value="" disabled>
+        <option value="" disabled className="bg-black text-white">
           Select a policy
         </option>
         {policies.map((p) => (
-          <option key={p.id} value={p.id} disabled={!p.indexed}>
+          <option key={p.id} value={p.id} disabled={!p.indexed} className="bg-black text-white">
             {p.filename} {p.insurer ? `(${p.insurer})` : ""} {p.indexed ? "" : "- indexing..."}
           </option>
         ))}
