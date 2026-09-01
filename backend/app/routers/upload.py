@@ -79,7 +79,7 @@ async def upload_policy(
             detail="No extractable text found in PDF (scanned/image-only PDFs aren't supported yet)",
         )
 
-    save_encrypted_pdf(raw_bytes)
+    file_path = save_encrypted_pdf(raw_bytes)
 
     policy = Policy(
         user_id=current_user.id,
@@ -87,6 +87,7 @@ async def upload_policy(
         structural_type=structural_type,
         insurer=insurer,
         is_reference_doc=is_reference_doc,
+        file_path=file_path,
     )
     session.add(policy)
     session.commit()

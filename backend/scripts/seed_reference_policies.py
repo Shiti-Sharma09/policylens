@@ -91,7 +91,7 @@ def seed():
                 print(f"WARN  {filename}: no extractable text, skipping")
                 continue
 
-            save_encrypted_pdf(raw_bytes)
+            file_path = save_encrypted_pdf(raw_bytes)
 
             policy = Policy(
                 user_id=reference_user.id,
@@ -99,6 +99,7 @@ def seed():
                 structural_type=structural_type,
                 insurer=insurer,
                 is_reference_doc=True,
+                file_path=file_path,
             )
             session.add(policy)
             session.commit()

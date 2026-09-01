@@ -20,6 +20,7 @@ class Policy(SQLModel, table=True):
     uploaded_at: datetime = Field(default_factory=datetime.utcnow)
     is_reference_doc: bool = Field(default=False)  # True for the IRDAI seed docs (Day 2)
     indexed_at: Optional[datetime] = None  # set once chunks are embedded + upserted into Qdrant (Day 3)
+    file_path: Optional[str] = None  # relative path to the encrypted PDF in backend/storage/policies/
 
 
 class PolicyChunkMeta(SQLModel, table=True):
