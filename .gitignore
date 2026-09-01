@@ -45,3 +45,5 @@ requirements.txt
 skills-lock.json
 .agents/
 .claude/
+day2_queries.txt
+day2_query_answers.md

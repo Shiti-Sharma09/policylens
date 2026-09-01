@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, UniqueConstraint
 
 
 class User(SQLModel, table=True):
@@ -28,6 +28,21 @@ class PolicyChunkMeta(SQLModel, table=True):
     qdrant_point_id: str = Field(index=True)
     chunk_index: int
     section_hint: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class AnswerCache(SQLModel, table=True):
+    """Caches (policy_id, question) -> answer, since Qwen3-8B answers take ~20-90s
+    on this CPU-only machine (see CLAUDE.md) - a meaningful latency win, not just a nice-to-have."""
+
+    __table_args__ = (UniqueConstraint("policy_id", "question_hash"),)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    policy_id: int = Field(foreign_key="policy.id", index=True)
+    question_hash: str = Field(index=True)  # sha256 of the normalized (lowercased, stripped) question
+    question: str
+    answer: str
+    citations_json: str  # JSON-encoded list of {chunk_text, section_hint, chunk_index, score}
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 

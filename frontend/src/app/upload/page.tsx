@@ -56,9 +56,14 @@ export default function UploadPage() {
     <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 p-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Your policies</h1>
-        <button onClick={handleLogout} className="text-sm underline">
-          Log out
-        </button>
+        <div className="flex gap-4">
+          <a href="/chat" className="text-sm underline">
+            Ask a question
+          </a>
+          <button onClick={handleLogout} className="text-sm underline">
+            Log out
+          </button>
+        </div>
       </div>
 
       <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded border-2 border-dashed p-8 text-center">
@@ -73,7 +78,8 @@ export default function UploadPage() {
           <li key={p.id} className="rounded border p-3">
             <p className="font-medium">{p.filename}</p>
             <p className="text-sm text-gray-500">
-              {p.insurer ?? "Unknown insurer"} · {p.structural_type ?? "Unclassified"} · {p.chunk_count} chunks
+              {p.insurer ?? "Unknown insurer"} · {p.structural_type ?? "Unclassified"} · {p.chunk_count} chunks ·{" "}
+              {p.indexed ? "indexed" : "indexing..."}
             </p>
           </li>
         ))}
