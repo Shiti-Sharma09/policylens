@@ -62,6 +62,7 @@ export async function listPolicies(): Promise<PolicySummary[]> {
   const token = getToken();
   const res = await fetch(`${API_URL}/upload/policies`, {
     headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store", // indexed status changes in the background; never serve a stale cached copy
   });
   if (!res.ok) throw new Error(await parseErrorDetail(res));
   return res.json();
