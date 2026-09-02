@@ -106,3 +106,60 @@ export async function askQuestion(policyId: number, question: string): Promise<A
   if (!res.ok) throw new Error(await parseErrorDetail(res));
   return res.json();
 }
+
+export interface StreamResult {
+  citations: Citation[];
+  cached: boolean;
+}
+
+/**
+ * Streaming variant of askQuestion(). Uses fetch's ReadableStream instead of
+ * EventSource because EventSource can't send the Authorization header or a POST
+ * body - the backend speaks Server-Sent Events (`data: {...}\n\n` lines) over a
+ * plain POST response instead. `onToken` fires once per answer piece as it
+ * arrives; the returned promise resolves with citations once the `done` event
+ * arrives.
+ */
+export async function askQuestionStream(
+  policyId: number,
+  question: string,
+  onToken: (text: string) => void
+): Promise<StreamResult> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/ask/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ policy_id: policyId, question }),
+  });
+  if (!res.ok) throw new Error(await parseErrorDetail(res));
+  if (!res.body) throw new Error("Streaming isn't supported in this browser");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result: StreamResult | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // SSE events are separated by a blank line; the last split part may be an
+    // incomplete event still being received, so keep it in the buffer.
+    const events = buffer.split("\n\n");
+    buffer = events.pop() ?? "";
+
+    for (const event of events) {
+      const line = event.split("\n").find((l) => l.startsWith("data: "));
+      if (!line) continue;
+      const payload = JSON.parse(line.slice("data: ".length));
+      if (payload.type === "token") {
+        onToken(payload.text as string);
+      } else if (payload.type === "done") {
+        result = { citations: payload.citations as Citation[], cached: payload.cached as boolean };
+      }
+    }
+  }
+
+  return result ?? { citations: [], cached: false };
+}
