@@ -21,6 +21,7 @@ class Policy(SQLModel, table=True):
     is_reference_doc: bool = Field(default=False)  # True for the IRDAI seed docs (Day 2)
     indexed_at: Optional[datetime] = None  # set once chunks are embedded + upserted into Qdrant (Day 3)
     file_path: Optional[str] = None  # relative path to the encrypted PDF in backend/storage/policies/
+    tenure_years: Optional[int] = None  # declared product duration if stated in the wording (e.g. 3, 1); None if not stated
 
 
 class PolicyChunkMeta(SQLModel, table=True):

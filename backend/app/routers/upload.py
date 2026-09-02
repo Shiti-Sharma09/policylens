@@ -15,6 +15,7 @@ from app.services.chunking import chunk_text
 from app.services.file_storage import save_encrypted_pdf
 from app.services.indexing import index_policy
 from app.services.pdf_extraction import extract_text_from_pdf_bytes
+from app.services.policy_metadata import detect_tenure_years
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class PolicyResponse(BaseModel):
     is_reference_doc: bool
     chunk_count: int
     indexed: bool
+    tenure_years: int | None
 
 
 def _index_policy_background(policy_id: int, insurer: str | None, structural_type: str | None) -> None:
@@ -80,6 +82,7 @@ async def upload_policy(
         )
 
     file_path = save_encrypted_pdf(raw_bytes)
+    tenure_years = detect_tenure_years(text)
 
     policy = Policy(
         user_id=current_user.id,
@@ -88,6 +91,7 @@ async def upload_policy(
         insurer=insurer,
         is_reference_doc=is_reference_doc,
         file_path=file_path,
+        tenure_years=tenure_years,
     )
     session.add(policy)
     session.commit()
@@ -127,6 +131,7 @@ async def upload_policy(
         is_reference_doc=policy.is_reference_doc,
         chunk_count=len(chunks),
         indexed=False,
+        tenure_years=policy.tenure_years,
     )
 
 
@@ -152,6 +157,7 @@ def list_policies(
                 is_reference_doc=policy.is_reference_doc,
                 chunk_count=chunk_count,
                 indexed=policy.indexed_at is not None,
+                tenure_years=policy.tenure_years,
             )
         )
     return result

@@ -78,7 +78,8 @@ export default function UploadPage() {
           <li key={p.id} className="rounded border p-3">
             <p className="font-medium">{p.filename}</p>
             <p className="text-sm text-gray-500">
-              {p.insurer ?? "Unknown insurer"} · {p.structural_type ?? "Unclassified"} · {p.chunk_count} chunks ·{" "}
+              {p.insurer ?? "Unknown insurer"} · {p.structural_type ?? "Unclassified"} ·{" "}
+              {p.tenure_years ? `${p.tenure_years}-year` : "tenure unstated"} · {p.chunk_count} chunks ·{" "}
               {p.indexed ? "indexed" : "indexing..."}
             </p>
           </li>
