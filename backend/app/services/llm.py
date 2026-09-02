@@ -8,6 +8,9 @@ real answers take ~20-90s on this CPU-only machine; callers must show a loading 
 not assume this is fast.
 """
 
+import json
+from collections.abc import Iterator
+
 import httpx
 
 from app.config import settings
@@ -32,3 +35,33 @@ def chat(messages: list[dict]) -> str:
     )
     response.raise_for_status()
     return response.json()["message"]["content"]
+
+
+def chat_stream(messages: list[dict]) -> Iterator[str]:
+    """Streaming variant of chat() - yields content pieces as Ollama generates them
+    (Ollama emits one JSON object per line, each carrying the next token(s) plus a
+    final {"done": true} line), instead of blocking the caller until the whole
+    ~20-90s+ answer is ready. Used by POST /ask/stream so the frontend can show a
+    typing animation instead of a bare loading counter. Same think:false requirement
+    as chat() - unchanged, non-negotiable."""
+    with httpx.stream(
+        "POST",
+        f"{settings.OLLAMA_HOST}/api/chat",
+        json={
+            "model": settings.OLLAMA_LLM_MODEL,
+            "messages": messages,
+            "think": settings.OLLAMA_THINK,
+            "stream": True,
+        },
+        timeout=_TIMEOUT_SECONDS,
+    ) as response:
+        response.raise_for_status()
+        for line in response.iter_lines():
+            if not line:
+                continue
+            data = json.loads(line)
+            content = data.get("message", {}).get("content")
+            if content:
+                yield content
+            if data.get("done"):
+                break

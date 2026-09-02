@@ -33,6 +33,7 @@ from app.services.file_storage import save_encrypted_pdf
 from app.services.indexing import index_policy
 from app.services.pdf_extraction import extract_text_from_pdf_bytes
 from app.services.policy_metadata import detect_tenure_years
+from app.services.uin_validation import extract_uin, validate_uin_format
 
 REFERENCE_USER_EMAIL = "reference@policylens.local"
 
@@ -91,6 +92,14 @@ def seed():
             if not text:
                 print(f"WARN  {filename}: no extractable text, skipping")
                 continue
+
+            uin = extract_uin(text)
+            if uin is None:
+                print(f"WARN  {filename}: no UIN found in extracted text - verify authenticity by hand before trusting this document")
+            elif not validate_uin_format(uin):
+                print(f"WARN  {filename}: found '{uin}' but it doesn't match the expected UIN shape - double-check it wasn't OCR-mangled or isn't a genuine IRDAI filing")
+            else:
+                print(f"      UIN {uin} - shape looks right; still cross-check it against IRDAI's published product list by hand")
 
             file_path = save_encrypted_pdf(raw_bytes)
             tenure_years = detect_tenure_years(text)

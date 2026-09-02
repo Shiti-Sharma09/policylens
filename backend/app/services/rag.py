@@ -6,10 +6,12 @@ advisory ("this appears to be covered under...") and defers final say to the ins
 per this project's working conventions (see CLAUDE.md).
 """
 
+from collections.abc import Iterator
+
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from app.services.embeddings import embed_text
-from app.services.llm import chat
+from app.services.llm import chat, chat_stream
 from app.services.vectorstore import COLLECTION_NAME, get_qdrant_client
 
 SYSTEM_PROMPT = """You are an assistant that answers questions about a vehicle insurance policy, using ONLY the policy excerpts provided in the user's message.
@@ -64,3 +66,18 @@ def generate_answer(question: str, chunks: list[dict]) -> str:
         return "I couldn't find anything in this policy relevant to that question."
     answer = chat(_build_messages(question, chunks))
     return answer + _ADVISORY_DISCLAIMER
+
+
+def generate_answer_stream(question: str, chunks: list[dict]) -> Iterator[str]:
+    """Same grounded-answer generation as generate_answer(), but yields the answer
+    incrementally as Ollama streams tokens, so callers (POST /ask/stream) can forward
+    each piece to the frontend for a typing effect instead of blocking the full
+    20-90s+ wait. Yields the disclaimer as a final piece too - concatenating
+    everything this yields reconstructs the exact same string generate_answer()
+    would have returned."""
+    if not chunks:
+        yield "I couldn't find anything in this policy relevant to that question."
+        return
+    for token in chat_stream(_build_messages(question, chunks)):
+        yield token
+    yield _ADVISORY_DISCLAIMER

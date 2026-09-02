@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getToken, listPolicies, askQuestion, type PolicySummary, type Citation } from "@/lib/api";
+import { getToken, listPolicies, askQuestionStream, type PolicySummary, type Citation } from "@/lib/api";
 
 interface Turn {
   question: string;
@@ -77,11 +77,27 @@ export default function ChatPage() {
     const askedQuestion = question;
     setQuestion("");
 
+    // Add the turn immediately with an empty answer, then fill it in token-by-token
+    // as the stream arrives - this is what drives the typing animation below.
+    const turnIndex = turns.length;
+    setTurns((prev) => [...prev, { question: askedQuestion, answer: "", citations: [], cached: false }]);
+
     try {
-      const result = await askQuestion(policyId, askedQuestion);
-      setTurns((prev) => [...prev, { question: askedQuestion, ...result }]);
+      const { citations, cached } = await askQuestionStream(policyId, askedQuestion, (text) => {
+        setTurns((prev) => {
+          const next = [...prev];
+          next[turnIndex] = { ...next[turnIndex], answer: next[turnIndex].answer + text };
+          return next;
+        });
+      });
+      setTurns((prev) => {
+        const next = [...prev];
+        next[turnIndex] = { ...next[turnIndex], citations, cached };
+        return next;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get an answer");
+      setTurns((prev) => prev.slice(0, turnIndex));
     } finally {
       setAsking(false);
       if (timerRef.current) clearInterval(timerRef.current);
@@ -133,7 +149,10 @@ export default function ChatPage() {
         {turns.map((turn, i) => (
           <div key={i} className="flex flex-col gap-2 rounded border p-3">
             <p className="font-medium">{turn.question}</p>
-            <p className="whitespace-pre-wrap text-sm">{turn.answer}</p>
+            <p className="whitespace-pre-wrap text-sm">
+              {turn.answer}
+              {asking && i === turns.length - 1 && <span className="animate-pulse">▋</span>}
+            </p>
             {turn.cached && <p className="text-xs text-gray-400">(answered instantly from cache)</p>}
             {turn.citations.length > 0 && (
               <div className="flex flex-col gap-1">
@@ -160,9 +179,9 @@ export default function ChatPage() {
         ))}
       </div>
 
-      {asking && (
+      {asking && turns[turns.length - 1]?.answer === "" && (
         <p className="text-sm text-gray-500">
-          Thinking... ({elapsed}s) - real answers can take 1-3 minutes on this hardware, please wait.
+          Thinking... ({elapsed}s) - the first words can take a while to arrive on this hardware, please wait.
         </p>
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}
