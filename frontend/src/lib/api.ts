@@ -56,6 +56,7 @@ export interface PolicySummary {
   is_reference_doc: boolean;
   chunk_count: number;
   indexed: boolean;
+  tenure_years: number | null;
 }
 
 export async function listPolicies(): Promise<PolicySummary[]> {

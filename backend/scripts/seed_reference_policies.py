@@ -32,6 +32,7 @@ from app.services.chunking import chunk_text
 from app.services.file_storage import save_encrypted_pdf
 from app.services.indexing import index_policy
 from app.services.pdf_extraction import extract_text_from_pdf_bytes
+from app.services.policy_metadata import detect_tenure_years
 
 REFERENCE_USER_EMAIL = "reference@policylens.local"
 
@@ -92,6 +93,7 @@ def seed():
                 continue
 
             file_path = save_encrypted_pdf(raw_bytes)
+            tenure_years = detect_tenure_years(text)
 
             policy = Policy(
                 user_id=reference_user.id,
@@ -99,6 +101,7 @@ def seed():
                 structural_type=structural_type,
                 insurer=insurer,
                 is_reference_doc=True,
+                tenure_years=tenure_years,
                 file_path=file_path,
             )
             session.add(policy)
