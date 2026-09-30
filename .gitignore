@@ -36,7 +36,7 @@ Thumbs.db
 data/damage_dataset/
 
 # Internal planning docs and AI-assistant tooling - kept locally, not published to GitHub
-CLAUDE.md
+# (CLAUDE.md is the exception: it is tracked so contributors and Claude Code share project context)
 PLAN.md
 PROGRESS.md
 suggestions.md
